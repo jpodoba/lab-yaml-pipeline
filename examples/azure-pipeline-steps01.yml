@@ -1,0 +1,20 @@
+# File: azure-pipeline-steps01.yml
+
+jobs:
+- job: Linux
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - script: npm install
+  - script: yarn install
+  - script: npm run compile
+
+- job: Windows
+  pool:
+    vmImage: 'windows-latest'
+
+  steps:
+  - script: npm install
+  - script: yarn install
+  - script: npm run compile

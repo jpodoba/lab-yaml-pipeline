@@ -1,0 +1,116 @@
+#basic form of a trigger
+##trigger:
+##- master
+##- develop
+
+#if a trigger is not specified it's assumed '*'
+##trigger:
+##  branches:
+##    include:
+##    - '*'
+
+# specific branch build
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - develop
+    exclude:
+    - master/old*
+  tags:
+    exclude:
+    - do_not_build
+  paths:
+    exclude:
+    - README.md
+pr: none
+
+variables:
+#'majorVersion' and 'minorVersion' defined in variable groups, this is for the product managers
+#'variable: value' can not be used when '- group' is used
+- group: 'version_numbers'
+
+- name: vmImage
+  value: 'ubuntu-latest'
+- name: applicationName
+  value: 'hotbee'
+#There is another way, recommend not to use it, it's not in the source or azure devops, you delete it, it's  gone (? version control).
+#'Click Edit > Variables'
+
+# Reference: https://docs.microsoft.com/en-us/azure/devops/pipelines/process/run-number?view=azure-devops&tabs=yaml
+name: $(BuildDefinitionName)_$(SourceBranchName)_$(majorVersion).$(minorVersion)$(Rev:.r)
+
+stages:
+
+- stage: BLD
+  displayName: Build(CI)
+  #below can be a global variable as well
+  variables: {buildConfiguration: 'Release'}
+  jobs:
+  #Below is an alternate way to use jobs, not covered in this demo
+  #- template: jobs.yml
+
+  - job: Application
+    pool:
+      vmImage: $(vmImage)
+    #This won't run before Infrastructure, comment the dependsOn to run the jobs simultaneously
+    dependsOn: Infrastructure
+    steps:
+    #This is to explain that you can run a task in the same file
+    #If you really love powershell or bash, this is all you need.
+    #Make sure to pick the correct build agent image or use '-pwsh' '-bash'
+    - script: echo "Running the Application build for $(applicationName)"
+      displayName: 'Startup'
+
+      #Clone a fork of Micrososft's sample .net core application
+    - script: git clone 'https://github.com/jpodoba/dotnetcore-sqldb-tutorial.git'
+      name: cloneAppFromGitHub
+      displayName: 'git clone https://github.com/jpodoba/dotnetcore-sqldb-tutorial.git'
+
+    #building .net core on linux
+    - script: dotnet build --configuration $(buildConfiguration)
+      name: runDotnetBuild
+      displayName: 'dotnet build $(buildConfiguration)'
+      workingDirectory: 'dotnetcore-sqldb-tutorial'
+
+    #publishing .net core on linux
+    - script: dotnet publish --configuration $(buildConfiguration) --output publish
+      name: runDotnetPublish
+      displayName: 'dotnet publish $(buildConfiguration)'
+      workingDirectory: 'dotnetcore-sqldb-tutorial'
+
+    #create of zip of the publish folder
+    - task: ArchiveFiles@2
+      displayName: 'Create Archive: dotnetcore-sqldb-tutorial/publish/application.zip'
+      inputs:
+        rootFolderOrFile: 'dotnetcore-sqldb-tutorial/publish/' 
+        includeRootFolder: false 
+        archiveType: 'zip'
+        archiveFile: 'dotnetcore-sqldb-tutorial/publish/application.zip' 
+        replaceExistingArchive: true
+
+    #publish the zip as a pipeline artifact
+    - task: PublishPipelineArtifact@0
+      displayName: 'Publish pipeline artifact - application.zip'
+      inputs:
+        artifactName: 'application'
+        targetPath: 'dotnetcore-sqldb-tutorial/publish/application.zip'
+
+  - job: Infrastructure
+    pool:
+      vmImage: $(vmImage)
+    steps:
+    - script: echo "Running the Infrastructure build for $(applicationName)"
+      displayName: 'Startup'
+
+    #clone a fork of Micrososft's sample arm templates
+    - script: git clone 'https://github.com/Azure/azure-quickstart-templates.git'
+      name: cloneAppFromGitHub
+      displayName: 'git clone https://github.com/Azure/azure-quickstart-templates.git'
+
+    #publish the pipeline artifact
+    - task: PublishPipelineArtifact@0
+      inputs:
+        artifactName: 'infrastructure'
+        targetPath: 'azure-quickstart-templates/101-webapp-basic-windows/'

@@ -1,0 +1,171 @@
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - develop
+    exclude:
+    - releases/old*
+  tags:
+    exclude:
+    - do_not_build
+  paths:
+    exclude:
+    - README.md
+pr: none
+
+variables:
+  vmImage: 'ubuntu-latest'
+  majorVersion: 1
+  minorVersion: 0
+  applicationName: 'hotbee'
+
+# Reference: https://docs.microsoft.com/en-us/azure/devops/pipelines/process/run-number?view=azure-devops&tabs=yaml
+name: $(BuildDefinitionName)_$(SourceBranchName)_$(majorVersion).$(minorVersion)$(Rev:.r)
+
+stages:
+
+- stage: BLD
+  displayName: Build(CI)
+  variables: {buildConfiguration: 'Release'}
+  jobs:
+
+  - job: Infrastructure
+    pool:
+      vmImage: $(vmImage)
+    steps:
+    - script: echo "Running the Infrastructure build for $(applicationName)"
+      displayName: 'Startup'
+    - template: 'pipelines/infrastructure/build.yml'
+
+  - job: Application
+    pool:
+      vmImage: $(vmImage)
+    #dependsOn: Infrastructure
+    steps:
+    - script: echo "Running the Application build for $(applicationName)"
+      displayName: 'Startup'
+    - template: 'pipelines/application/build.yml'
+      parameters: {buildConfiguration: $(buildConfiguration)}
+
+- stage: DEV
+  displayName: 'DEV(CD)'
+  condition: and(succeeded('BLD'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  dependsOn: 
+   - BLD
+  variables: 
+    stage: 'dev'
+  jobs:
+  - deployment: Primary_NorthErope
+    pool:
+      vmImage: $(vmImage)
+    environment: dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn', location: 'northeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn'}
+
+- stage: QA
+  displayName: 'QA(CD)'
+  condition: and(succeeded('DEV'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  dependsOn:
+   - BLD 
+   - DEV
+  variables: 
+    stage: 'qa'
+  jobs:
+  - deployment: Primary_NorthErope
+    pool:
+      vmImage: $(vmImage)
+    environment: qa
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn', location: 'northeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn'}
+
+- stage: UAT
+  displayName: 'UAT(CD)'
+  condition: and(succeeded('BLD'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  dependsOn: 
+   - BLD
+  variables: 
+    stage: 'uat'
+  jobs:
+  - deployment: Primary_NorthErope
+    pool:
+      vmImage: $(vmImage)
+    environment: uat
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn', location: 'northeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn'}
+
+- stage: STG
+  displayName: 'STG(CD)'
+  condition: and(succeeded('UAT'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  dependsOn:
+   - BLD 
+   - UAT
+  variables: 
+    stage: 'stg'
+  jobs:
+  - deployment: Primary_NorthErope
+    pool:
+      vmImage: $(vmImage)
+    environment: stg
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn', location: 'northeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn'}
+
+
+- stage: PROD
+  displayName: 'PROD(CD)'
+  condition: and(succeeded('STG'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  dependsOn:
+   - BLD 
+   - STG
+  variables: 
+    stage: 'prod'
+  jobs:
+  - deployment: Primary_NorthErope
+    pool:
+      vmImage: $(vmImage)
+    environment: prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn', location: 'northeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'primary', spn: 'azure-devops-cloud4it-spn'}
+
+  - deployment: Secondary_WestErope
+    pool:
+      vmImage: $(vmImage)
+    environment: prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: 'pipelines/infrastructure/deploy.yml'
+            parameters: {type: 'secondary', spn: 'azure-devops-cloud4it-spn', location: 'westeurope'}
+          - template: 'pipelines/application/deploy.yml'
+            parameters: {type: 'secondary', spn: 'azure-devops-cloud4it-spn'}

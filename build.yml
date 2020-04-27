@@ -1,0 +1,75 @@
+#basic form of a trigger
+##trigger:
+##- master
+##- develop
+
+#if a trigger is not specified it's assumed '*'
+##trigger:
+##  branches:
+##    include:
+##    - '*'
+
+# specific branch build
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - develop
+    exclude:
+    - master/old*
+  tags:
+    exclude:
+    - do_not_build
+  paths:
+    exclude:
+    - README.md
+pr: none
+
+variables:
+#'majorVersion' and 'minorVersion' defined in variable groups, this is for the product managers
+#'variable: value' can not be used when '- group' is used
+- group: 'version_numbers'
+
+- name: vmImage
+  value: 'ubuntu-latest'
+- name: applicationName
+  value: 'hotbee'
+#There is another way, recommend not to use it, it's not in the source or azure devops, you delete it, it's  gone (? version control).
+#'Click Edit > Variables'
+
+# Reference: https://docs.microsoft.com/en-us/azure/devops/pipelines/process/run-number?view=azure-devops&tabs=yaml
+name: $(BuildDefinitionName)_$(SourceBranchName)_$(majorVersion).$(minorVersion)$(Rev:.r)
+
+stages:
+
+- stage: BLD
+  displayName: Build(CI)
+  #below can be a global variable as well
+  variables: {buildConfiguration: 'Release'}
+  jobs:
+  #Below is an alternate way to use jobs, not covered in this demo
+  #- template: jobs.yml
+
+  - job: Application
+    pool:
+      vmImage: $(vmImage)
+    #This won't run before Infrastructure, comment the dependsOn to run the jobs simultaneously
+    dependsOn: Infrastructure
+    steps:
+    #This is to explain that you can run a task in the same file
+    #If you really love powershell or bash, this is all you need.
+    #Make sure to pick the correct build agent image or use '-pwsh' '-bash'
+    - script: echo "Running the Application build for $(applicationName)"
+      displayName: 'Startup'
+    #This is to explain that you can use a template
+    - template: 'pipelines/application/build.yml'
+      parameters: {buildConfiguration: $(buildConfiguration)}
+
+  - job: Infrastructure
+    pool:
+      vmImage: $(vmImage)
+    steps:
+    - script: echo "Running the Infrastructure build for $(applicationName)"
+      displayName: 'Startup'
+    - template: 'pipelines/infrastructure/build.yml'

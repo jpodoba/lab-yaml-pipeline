@@ -1,0 +1,39 @@
+steps:
+
+#usage: TaskName@<major_version#>
+#custom tasks can be used in the same way, if you have re-used the same name(BAD!!!) just use guid@<major_version#>. 
+
+#Clone a fork of Micrososft's sample .net core application
+- script: git clone 'https://github.com/jpodoba/dotnetcore-sqldb-tutorial.git'
+  name: cloneAppFromGitHub
+  displayName: 'git clone https://github.com/jpodoba/dotnetcore-sqldb-tutorial.git'
+
+#building .net core on linux
+- script: dotnet build --configuration $(buildConfiguration)
+  name: runDotnetBuild
+  displayName: 'dotnet build $(buildConfiguration)'
+  workingDirectory: 'dotnetcore-sqldb-tutorial'
+
+#publishing .net core on linux
+- script: dotnet publish --configuration $(buildConfiguration) --output publish
+  name: runDotnetPublish
+  displayName: 'dotnet publish $(buildConfiguration)'
+  workingDirectory: 'dotnetcore-sqldb-tutorial'
+
+#create of zip of the publish folder
+- task: ArchiveFiles@2
+  displayName: 'Create Archive: dotnetcore-sqldb-tutorial/publish/application.zip'
+  inputs:
+    rootFolderOrFile: 'dotnetcore-sqldb-tutorial/publish/' 
+    includeRootFolder: false 
+    archiveType: 'zip'
+    archiveFile: 'dotnetcore-sqldb-tutorial/publish/application.zip' 
+    replaceExistingArchive: true
+
+#publish the zip as a pipeline artifact
+- task: PublishPipelineArtifact@0
+  displayName: 'Publish pipeline artifact - application.zip'
+  inputs:
+    artifactName: 'application'
+    targetPath: 'dotnetcore-sqldb-tutorial/publish/application.zip'
+    
