@@ -66,10 +66,11 @@ Build
 
 #### Build Only - without nested [build-core.yml](build-core.yml) 
 
-| Branch    |                                                                                                      Status                                                                                                       |
-| --------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| `master`  |  [![Build Status](https://dev.azure.com/hotbee/Labs/_apis/build/status/Lab-YAML-Build-Only-Without-Nested?branchName=master)](https://dev.azure.com/hotbee/Labs/_build/latest?definitionId=24&branchName=master)  |
-| `develop` | [![Build Status](https://dev.azure.com/hotbee/Labs/_apis/build/status/Lab-YAML-Build-Only-Without-Nested?branchName=develop)](https://dev.azure.com/hotbee/Labs/_build/latest?definitionId=24&branchName=develop) |
+| Branch    |                                                                                               Status                                                                                               |
+| --------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| `master`  |  [![Build Status](https://dev.azure.com/hotbee/Labs/_apis/build/status/Lab-YAML-Build-Only?branchName=master)](https://dev.azure.com/hotbee/Labs/_build/latest?definitionId=23&branchName=master)  |
+| `develop` | [![Build Status](https://dev.azure.com/hotbee/Labs/_apis/build/status/Lab-YAML-Build-Only?branchName=develop)](https://dev.azure.com/hotbee/Labs/_build/latest?definitionId=23&branchName=develop) |
+
 
 #### Build Only [build.yml](build.yml) 
 
