@@ -72,6 +72,8 @@ Build
 | `develop` | [![Build Status](https://dev.azure.com/hotbee/Labs/_apis/build/status/Lab-YAML-Build-Only?branchName=develop)](https://dev.azure.com/hotbee/Labs/_build/latest?definitionId=23&branchName=develop) |
 
 
+
+
 #### Build Only [build.yml](build.yml) 
 
 | Branch    |                                                                                               Status                                                                                               |
